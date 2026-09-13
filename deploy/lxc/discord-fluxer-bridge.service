@@ -1,4 +1,6 @@
 [Unit]
+# Modèle de service — install.sh remplace les placeholders __APP_DIR__ et
+# __APP_USER__ lors de l'installation (voir install.sh).
 Description=discord-fluxer-bridge — passerelle bidirectionnelle Discord <-> Fluxer
 Documentation=https://github.com/France-OPG/bot-bridge-discord-fluxer
 After=network-online.target
@@ -6,9 +8,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=dxf
-Group=dxf
-WorkingDirectory=/opt/discord-fluxer-bridge
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
@@ -21,7 +23,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=full
-ReadWritePaths=/opt/discord-fluxer-bridge/data /opt/discord-fluxer-bridge/config
+ReadWritePaths=__APP_DIR__/data __APP_DIR__/config
 
 [Install]
 WantedBy=multi-user.target

@@ -72,48 +72,49 @@ Les volumes :
 - `./config/config.yaml` → monté en lecture seule dans le conteneur ;
 - `./data` → store de correspondances + cache des pièces jointes.
 
-### En production (Proxmox : conteneur LXC)
+### En production (LXC / VM — installateur unique)
 
-Le pont tourne dans un conteneur **LXC Debian 12** (unprivileged) sur un hôte
-Proxmox VE. Trois fichiers sont fournis dans `deploy/lxc/` :
+Le pont s'installe **dans** votre conteneur LXC ou votre VM Linux, avec **un
+seul script** : `install.sh`. Il fonctionne sur Debian 12+ et Ubuntu 22.04+,
+avec ou sans systemd (repli "avant-plan").
 
-| Fichier                          | Où il s'exécute        | Rôle                                                              |
-|----------------------------------|------------------------|-------------------------------------------------------------------|
-| `host-create-lxc.sh`             | hôte Proxmox (root)    | crée le conteneur, le démarre, pousse et lance le setup           |
-| `container-setup.sh`             | dans le conteneur      | Node 22 (NodeSource), pnpm, clone GitHub, build, service systemd  |
-| `discord-fluxer-bridge.service`  | dans le conteneur      | unité systemd (user `dxf`, redémarrage auto, durcissement)        |
+Étapes :
 
-1. **Publiez d'abord le dépôt sur GitHub** (voir « Publication sur GitHub » ci-dessous).
-2. Sur l'hôte Proxmox, munissez-vous du dépôt (clone), puis :
+1. Créez votre conteneur/VM (Debian 12 ou Ubuntu 24.04 recommandé ; dans
+   Proxmox, un conteneur LXC `unprivileged` convient parfaitement, sans besoin
+   de privilèges supplémentaires) et connectez-vous dedans (SSH ou console).
+2. Ouvrez les sorties réseau vers `discord.com`, `api.fluxer.app`/votre
+   instance Fluxer et `deb.nodesource.com`.
+3. Clonez puis installez :
    ```bash
-   bash deploy/lxc/host-create-lxc.sh
+   git clone https://github.com/France-OPG/bot-bridge-discord-fluxer
+   cd bot-bridge-discord-fluxer
+   sudo bash install.sh
    ```
-   Les paramètres (VIP, hostname, stockage, ressources, bridge, URL du dépôt)
-   sont en variables en tête du script : `CTID=`, `STORAGE=`, `BRIDGE=`, etc.
-3. Remplissez les secrets dans le conteneur :
+   Le script : vérifie l'environnement, installe **Node.js 22** (NodeSource) et
+   **pnpm**, compile le projet, crée l'utilisateur `dxf`, génère `.env` et
+   `config/config.yaml` (sans rien écraser), installe le service systemd.
+4. Renseignez les secrets puis démarrez :
    ```bash
-   pct exec 100 -- nano /opt/discord-fluxer-bridge/.env
-   pct exec 100 -- nano /opt/discord-fluxer-bridge/config/config.yaml
-   ```
-   (`100` = ID du conteneur ; changez si vous avez ajusté `CTID`.)
-4. Validez puis démarrez le service :
-   ```bash
-   pct exec 100 -- bash /opt/discord-fluxer-bridge/deploy/lxc/validate.sh
-   pct exec 100 -- systemctl enable --now discord-fluxer-bridge
-   pct exec 100 -- journalctl -u discord-fluxer-bridge -f
+   nano .env                     # DISCORD_TOKEN, FLUXER_API_URL, FLUXER_TOKEN
+   nano config/config.yaml       # identifiants de salons (texte/voix)
+   sudo bash deploy/lxc/validate.sh
+   sudo systemctl enable --now discord-fluxer-bridge
+   journalctl -u discord-fluxer-bridge -f
    ```
 
-> Le service est activé automatiquement par `container-setup.sh` **uniquement si
-> les tokens sont déjà présents** dans `.env`. Sinon il attend que vous les
-> remplissiez (étape 3) puis démarrage manuel (étape 4). Répertoires de données
-> et configuration restent dans l'image : sauvegardez la rootfs ou prévoyez un
-> stockage monté.
+> `install.sh` **n'active le service que si les tokens sont déjà présents** ;
+> sinon il attend l'étape 4. Il est idempotent : après un `git pull`, relancez
+> `sudo bash install.sh` pour reconstruire.
+>
+> **Sans systemd** (conteneur minimé) : `install.sh` écrit un mode avant-plan
+> `deploy/lxc/run.sh` pour lancer le pont (ex. `tmux new -s dxf 'bash
+> deploy/lxc/run.sh'`).
 
 Accès au serveur d'état : dans `config/config.yaml`, passer
-`admin.status_host: "0.0.0.0"` pour l'atteindre via l'IP du conteneur
-(`curl http://<ip-conteneur>:8083/health`) — ou garder `127.0.0.1` et utiliser
-un tunnel SSH :
-`ssh -L 8083:127.0.0.1:8083 root@<hote-proxmox>`.
+`admin.status_host: "0.0.0.0"` pour l'atteindre via l'IP du conteneur/VM
+(`curl http://<ip>:8083/health`) — ou garder `127.0.0.1` et utiliser un tunnel
+SSH (`ssh -L 8083:127.0.0.1:8083 user@<ip>`).
 
 ## 5. Vérifications après démarrage
 
@@ -135,7 +136,7 @@ Voir `docs/DEPANNAGE.md` pour les erreurs courantes (npm corrompu, Node < 22,
 ## Publication sur GitHub
 
 Le dépôt est prêt à publier : `.gitignore` exclut `node_modules/`, `.env`,
-`dist/`, `data/` et les caches. Depuis `discord-fluxer-bridge/` :
+`dist/`, `data/` et les caches. Depuis la racine du projet :
 
 ```bash
 git init -b main
@@ -145,8 +146,6 @@ git remote add origin https://github.com/France-OPG/bot-bridge-discord-fluxer
 git push -u origin main
 ```
 
-> Les scripts LXC clonent ce dépôt par défaut
-> (`GITHUB_REPO=https://github.com/France-OPG/bot-bridge-discord-fluxer`) :
-> d'où l'importance de publier avant de lancer `host-create-lxc.sh`.
-> Un CI GitHub Actions (`push`/PR) lance automatiquement typecheck + tests +
-> build sur Node 22.
+> Une fois publié, les utilisateurs n'ont qu'à `git clone` puis `bash install.sh`
+> sur leur LXC/VM. Un CI GitHub Actions (`push`/PR) lance automatiquement
+> typecheck + tests + build sur Node 22.

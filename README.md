@@ -35,21 +35,29 @@ pnpm install          # pnpm (npm est corrompu sur certains postes)
 pnpm dev              # ou : pnpm build && pnpm start
 ```
 
-## Démarrage rapide (Proxmox · LXC)
+## Démarrage rapide (LXC / VM)
+
+Sur un conteneur LXC ou une VM Linux (Debian 12+, Ubuntu 22.04+), créez votre
+système, puis clonez et lancez l'installateur :
 
 ```bash
-# Sur l'hôte Proxmox (root), après avoir publié le dépôt sur GitHub :
-bash deploy/lxc/host-create-lxc.sh        # crée le conteneur + installe tout
+git clone https://github.com/France-OPG/bot-bridge-discord-fluxer
+cd bot-bridge-discord-fluxer
+sudo bash install.sh          # Node 22 + build + service, tout en un
 
-# Puis, une seule fois, dans le conteneur (ID 100 par défaut) :
-pct exec 100 -- nano /opt/discord-fluxer-bridge/.env
-pct exec 100 -- nano /opt/discord-fluxer-bridge/config/config.yaml
-pct exec 100 -- systemctl enable --now discord-fluxer-bridge
-pct exec 100 -- journalctl -u discord-fluxer-bridge -f
+# Une seule fois — les secrets :
+nano .env                     # DISCORD_TOKEN, FLUXER_API_URL, FLUXER_TOKEN
+nano config/config.yaml       # identifiants de salons (texte/voix)
+
+# Validation puis démarrage :
+sudo bash deploy/lxc/validate.sh
+sudo systemctl enable --now discord-fluxer-bridge
+journalctl -u discord-fluxer-bridge -f
 ```
 
-Détails (variables CTID/STORAGE/BRIDGE, service systemd, accès au statut) dans
-`docs/INSTALLATION.md`. Pour publier le dépôt sur GitHub, voir la même page.
+`install.sh` est **idempotent** : relancez-le après un `git pull` pour mettre à
+jour. Sans systemd : mode avant-plan `bash deploy/lxc/run.sh`. Détails et
+accès au serveur d'état dans `docs/INSTALLATION.md`.
 
 Commandes utiles :
 
