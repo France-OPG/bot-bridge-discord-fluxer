@@ -1,0 +1,20 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Configuration sensible (tokens)
+.env
+config/config.yaml
+config/config.json
+config/config.yml
+data/
+!config/config.example.yaml
+
+# Logs
+logs/
+*.log
+
+# Système
+.DS_Store
+Thumbs.db

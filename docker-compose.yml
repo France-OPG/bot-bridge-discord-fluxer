@@ -1,0 +1,31 @@
+services:
+  discord-fluxer-bridge:
+    build: .
+    image: discord-fluxer-bridge:latest
+    container_name: discord-fluxer-bridge
+    restart: unless-stopped
+    environment:
+      STATUS_PORT: "8083"
+      LOG_LEVEL: "info"
+    env_file:
+      - .env
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+      - ./data:/app/data
+    ports:
+      # Serveur de statut local (health/status) — à ne PAS exposer sur Internet.
+      - "127.0.0.1:8083:8083"
+    networks:
+      - bridge
+    # Le pont a besoin de sortir vers Discord, Fluxer et LiveKit.
+    # Aucune dépendance Docker interne n'est requise.
+    # depends_on: []
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  bridge:
+    driver: bridge

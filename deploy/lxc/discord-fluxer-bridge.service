@@ -1,0 +1,27 @@
+[Unit]
+Description=discord-fluxer-bridge — passerelle bidirectionnelle Discord <-> Fluxer
+Documentation=https://github.com/France-OPG/bot-bridge-discord-fluxer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dxf
+Group=dxf
+WorkingDirectory=/opt/discord-fluxer-bridge
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+UMask=0027
+
+# Durcissement du service
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/opt/discord-fluxer-bridge/data /opt/discord-fluxer-bridge/config
+
+[Install]
+WantedBy=multi-user.target

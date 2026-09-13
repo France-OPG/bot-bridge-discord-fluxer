@@ -1,0 +1,90 @@
+# ============================================================
+#  exemble de configuration du bridge Discord <-> Fluxer
+#  Copiez ce fichier vers config/config.yaml et remplissez les
+#  identifiants. Les chaînes ${VAR} sont remplacées par les
+#  valeurs des variables d'environnement (fichier .env).
+# ============================================================
+
+bridge:
+  # Surnom affiché du pont, utilisé dans les logs et l'état.
+  name: "Discord <-> Fluxer"
+
+  # Marqueur invisible ajouté en fin de chaque message relayé.
+  # Sert de protection anti-boucle en complément des vérifications
+  # d'auteur/webhook. Mettre à "" pour désactiver.
+  signature: "\u200bDxF"
+
+  # Préfixes d'affichage (côté cible).
+  display:
+    discord: "Discord"
+    fluxer: "Fluxer"
+
+  # Activation fine de chaque type de relai.
+  relay:
+    messages: true
+    edits: true
+    deletes: true
+    replies: true
+    reactions: true
+    attachments: true
+    # Messages système (arrivées, boots de serveur, etc.) : ignorés en général.
+    system_messages: false
+
+  # Mode d'affichage des emojis de l'autre plateforme.
+  # text  : <:bonjour:123> devient ":bonjour:" (recommandé)
+  # raw   : conserve le format d'origine (peut s'afficher cassé)
+  # strip : supprime les emojis custom de l'autre plateforme
+  emoji_mode: "text"
+
+  attachments:
+    # Taille maximale par fichier téléchargé (Mo).
+    max_size_mb: 24
+    # Répertoire de cache des pièces jointes téléchargées.
+    cache_dir: "./data/attachments"
+
+discord:
+  # Token du bot Discord ($(DISCORD_TOKEN) lu depuis .env)
+  token: "${DISCORD_TOKEN}"
+  intents:
+    guilds: true
+    guild_members: true
+    guild_messages: true
+    message_content: true
+    message_reactions: true
+    voice_states: true
+
+fluxer:
+  # URL de base de l'API Fluxer (doit inclure /v1)
+  base_url: "${FLUXER_API_URL}"
+  token: "${FLUXER_TOKEN}"
+
+# Association des salons texte et vocaux.
+# text : relaye les messages texte entre les deux salons.
+# voice.enabled : active le pont vocal bidirectionnel entre les
+# deux salons vocaux (nécessite un serveur LiveKit configuré sur
+# l'instance Fluxer : voir docs/VOICE.md).
+links:
+  - name: "general"
+    discord_channel_id: "123456789012345678"
+    fluxer_channel_id: "987654321098765432"
+    text: true
+    voice:
+      enabled: false
+      discord_channel_id: "222222222222222222"
+      fluxer_channel_id: "333333333333333333"
+
+admin:
+  # Serveur d'état HTTP (GET /health, GET /status). Réglé sur
+  # 127.0.0.1 par défaut : exposez seulement via un proxy sécurisé.
+  status_host: "127.0.0.1"
+  status_port: ${STATUS_PORT}
+
+logging:
+  level: ${LOG_LEVEL}
+  # true : logs JSON (docker), false : logs colorés (développement)
+  json: true
+  # Champs à masquer dans les logs (chemins dot).
+  redact:
+    - "discord.token"
+    - "fluxer.token"
+    - "*.Authorization"

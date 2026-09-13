@@ -1,0 +1,13 @@
+node_modules
+dist
+data
+config/config.yaml
+config/config.yml
+config/config.json
+.env
+*.log
+.github
+.gitlab
+.git
+.idea
+.vscode
