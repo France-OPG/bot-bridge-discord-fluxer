@@ -91,15 +91,18 @@ avec ou sans systemd (repli "avant-plan").
    cd bot-bridge-discord-fluxer
    sudo bash install.sh
    ```
-   Le script : vérifie l'environnement, installe **Node.js 22** (NodeSource) et
+   La commande copie d'abord les sources dans **`/opt/discord-fluxer-bridge`**
+   (chemin accessible au service), quel que soit le dossier de clonage. Le
+   script : vérifie l'environnement, installe **Node.js 22** (NodeSource) et
    **pnpm**, compile le projet, crée l'utilisateur `dxf`, génère `.env` et
    `config/config.yaml` (sans rien écraser), installe le service systemd.
-4. Renseignez les secrets puis démarrez :
+4. Renseignez les secrets puis démarrez (depuis `/opt/discord-fluxer-bridge`) :
    ```bash
+   cd /opt/discord-fluxer-bridge
    nano .env                     # DISCORD_TOKEN, FLUXER_API_URL, FLUXER_TOKEN
    nano config/config.yaml       # identifiants de salons (texte/voix)
    sudo bash deploy/lxc/validate.sh
-   sudo systemctl enable --now discord-fluxer-bridge
+   sudo systemctl restart discord-fluxer-bridge
    journalctl -u discord-fluxer-bridge -f
    ```
 

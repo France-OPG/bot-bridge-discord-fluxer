@@ -9,10 +9,10 @@ bridge:
   # Surnom affiché du pont, utilisé dans les logs et l'état.
   name: "Discord <-> Fluxer"
 
-  # Marqueur invisible ajouté en fin de chaque message relayé.
-  # Sert de protection anti-boucle en complément des vérifications
-  # d'auteur/webhook. Mettre à "" pour désactiver.
-  signature: "\u200bDxF"
+  # Marqueur ajouté en fin de chaque message relayé (anti-boucle,
+  # en complément de la vérification d'auteur). Vide "" = aucun ajout,
+  # aucun texte visible en fin de message. Optionnel — laissez "".
+  signature: ""
 
   # Préfixes d'affichage (côté cible).
   display:

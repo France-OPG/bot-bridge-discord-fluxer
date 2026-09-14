@@ -13,6 +13,19 @@ cd "$APP_DIR"
 echo "==> 1. Validation de la configuration (config/config.yaml + .env)"
 node dist/cli.js validate-config -c config/config.yaml
 
+# --- Alertes fréquentes (ne bloquent pas la validation) -------------------
+if [ -f .env ]; then
+  _api="$(grep -E '^FLUXER_API_URL=' .env | head -1 | cut -d= -f2- || true)"
+  case "$_api" in
+    *oauth2/authorize*)
+      echo
+      echo "!!! ATTENTION : FLUXER_API_URL contient une URL d'invitation (oauth2/authorize)."
+      echo "    Il faut l'URL de base de l'API, ex. https://api.canary.fluxer.app/v1"
+      echo "    (pas de 'oauth2', pas de 'web.'), puis : systemctl restart discord-fluxer-bridge"
+      ;;
+  esac
+fi
+
 echo
 echo "==> 2. Liens configurés"
 node dist/cli.js links -c config/config.yaml

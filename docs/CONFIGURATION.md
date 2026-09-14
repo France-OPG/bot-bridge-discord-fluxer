@@ -30,7 +30,7 @@ Le chemin est résolu dans l'ordre :
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|
 | `name` | string | `bridge` | Nom du pont (nom des webhooks créés + logs). Type Max 80 caractères pour un username de webhook. |
-| `signature` | string | `\u200bDxF` | Marqueur invisible en fin de message relayé (anti-boucle). `""` pour désactiver. |
+| `signature` | string | `""` | Marqueur ajouté en fin de message relayé (anti-boucle). `""` = aucun ajout visible. |
 | `display.discord` | string | `Discord` | Préfixe `[Discord]` visible côté Fluxer. |
 | `display.fluxer` | string | `Fluxer` | Préfixe `[Fluxer]` visible côté Discord. |
 | `relay.messages` | bool | `true` | Relayer les messages. |

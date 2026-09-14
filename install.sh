@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # ============================================================================
 #  install.sh — Installation du pont discord-fluxer-bridge sur un conteneur
 #  LXC ou une VM Linux (Debian 12+ / Ubuntu 22.04+).
@@ -11,38 +11,63 @@
 #  La commande `install.sh` peut être relancée à volonté (mise à jour après
 #  un `git pull`, changement de chemin, etc.) : elle est idempotente.
 #
+#  Le dépôt est par défaut **copié dans /opt/discord-fluxer-bridge** (chemin
+#  accessible par le service) quel que soit l'endroit d'où vous lancez le
+#  script (ex. ~/bot-bridge-discord-fluxer). Override : APP_DIR=/chemin bash
+#  install.sh
+#
 #  Ce qu'elle fait :
 #    1. Vérifie l'environnement (root, Debian/Ubuntu)
-#    2. Installe Node.js 22 (NodeSource) + pnpm (corepack)
-#    3. Compile le projet TypeScript (pnpm install + pnpm build)
-#    4. Crée un utilisateur système dédié (`dxf`)
-#    5. Génère .env et config/config.yaml depuis les exemples (si absents)
-#    6. Installe le service systemd (ou un mode "avant-plan" si pas de systemd)
-#    7. Démarre le service si les tokens sont déjà renseignés
+#    2. Copie le dépôt dans APP_DIR si besoin (/opt/discord-fluxer-bridge)
+#    3. Installe Node.js 22 (NodeSource) + pnpm (corepack)
+#    4. Compile le projet TypeScript (pnpm install + pnpm build)
+#    5. Crée un utilisateur système dédié (`dxf`)
+#    6. Génère .env et config/config.yaml depuis les exemples (si absents)
+#    7. Installe le service systemd (ou un mode "avant-plan" si pas de systemd)
+#    8. Démarre le service si les tokens sont déjà renseignés
 # ============================================================================
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="${APP_DIR:-/opt/discord-fluxer-bridge}"
 APP_USER="${APP_USER:-dxf}"
 SERVICE_NAME="discord-fluxer-bridge"
 NODE_MAJOR="22"
 NODE_MIN="22.13.0"
-
-if [ ! -f "$APP_DIR/package.json" ]; then
-  echo "ERREUR : introuvable 'package.json' dans $APP_DIR." >&2
-  echo "  Lancez ce script depuis la racine du dépôt (répertoire contenant package.json)." >&2
-  exit 1
-fi
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "ERREUR : relancez avec les droits root (sudo bash install.sh)." >&2
   exit 1
 fi
 
+# ---------------------------------------------------------------------------
+# Copie du dépôt vers APP_DIR (uniquement s'il n'y est pas déjà).
+# ---------------------------------------------------------------------------
+log "Dépôt source  : $SRC_DIR"
+log "Installation  : $APP_DIR"
+
+if [ "$SRC_DIR" != "$APP_DIR" ] && [ ! -f "$APP_DIR/package.json" ]; then
+  log "Copie du dépôt vers $APP_DIR…"
+  mkdir -p "$(dirname "$APP_DIR")"
+  # Exclusion des dossiers lourds/régénérables ; on garde .git, .env et
+  # config/config.yaml s'ils existent déjà dans la source (éditions conservées).
+  (
+    cd "$SRC_DIR"
+    tar cf - --exclude=./node_modules --exclude=./dist --exclude=./data \
+      --exclude=./logs . \
+      | tar xf - -C "$APP_DIR"
+  )
+fi
+
+if [ ! -f "$APP_DIR/package.json" ]; then
+  echo "ERREUR : introuvable 'package.json' dans $APP_DIR (échec de copie ?)." >&2
+  exit 1
+fi
+
 log() { echo "==> $*"; }
 
 # ---------------------------------------------------------------------------
-# 1. Environnement
+# 2. Environnement
 # ---------------------------------------------------------------------------
 if ! command -v apt-get >/dev/null 2>&1; then
   echo "ERREUR : ce script ne supporte que Debian/Ubuntu (apt manquant)." >&2
@@ -52,7 +77,7 @@ fi
 log "Répertoire d'installation : $APP_DIR"
 
 # ---------------------------------------------------------------------------
-# 2. Node.js 22 + pnpm
+# 3. Node.js 22 + pnpm
 # ---------------------------------------------------------------------------
 log "Installation des paquets de base (curl, git, toolchain)…"
 export DEBIAN_FRONTEND=noninteractive
@@ -89,7 +114,7 @@ corepack enable || true
 corepack prepare "pnpm@$(node -p "require('$APP_DIR/package.json').packageManager.replace(/^pnpm@/, '') || '9.15.0'")" --activate || true
 
 # ---------------------------------------------------------------------------
-# 3. Compilation
+# 4. Compilation
 # ---------------------------------------------------------------------------
 cd "$APP_DIR"
 
@@ -100,7 +125,7 @@ log "Compilation TypeScript (pnpm build)…"
 pnpm build
 
 # ---------------------------------------------------------------------------
-# 4. Utilisateur système dédié + répertoires
+# 5. Utilisateur système dédié + répertoires
 # ---------------------------------------------------------------------------
 log "Utilisateur système '$APP_USER'…"
 if ! id "$APP_USER" >/dev/null 2>&1; then
@@ -112,7 +137,7 @@ mkdir -p "$APP_DIR/data/attachments"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 
 # ---------------------------------------------------------------------------
-# 5. Fichiers de configuration (jamais écrasés)
+# 6. Fichiers de configuration (jamais écrasés)
 # ---------------------------------------------------------------------------
 log "Génération de .env et config/config.yaml (exemples, non écrasés)…"
 [ -f "$APP_DIR/.env" ] || cp "$APP_DIR/.env.example" "$APP_DIR/.env"
@@ -125,7 +150,7 @@ for key in DISCORD_TOKEN FLUXER_API_URL FLUXER_TOKEN; do
 done
 
 # ---------------------------------------------------------------------------
-# 6. Service / mode d'exécution
+# 7. Service / mode d'exécution
 # ---------------------------------------------------------------------------
 run_script="$APP_DIR/deploy/lxc/run.sh"
 cat > "$run_script" <<EOF
@@ -160,7 +185,16 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 7. Récapitulatif
+# 7b. Commandes utilitaires (bbdf-up / bbdf-ac / bbdf-de) dans le PATH
+# ---------------------------------------------------------------------------
+chmod +x "$APP_DIR"/deploy/lxc/bbdf-up.sh "$APP_DIR"/deploy/lxc/bbdf-ac.sh "$APP_DIR"/deploy/lxc/bbdf-de.sh
+for cmd in bbdf-up bbdf-ac bbdf-de; do
+  ln -sf "$APP_DIR/deploy/lxc/$cmd.sh" "/usr/local/bin/$cmd"
+done
+log "Commandes installées : bbdf-up (maj), bbdf-ac (activer), bbdf-de (désactiver)"
+
+# ---------------------------------------------------------------------------
+# 8. Récapitulatif
 # ---------------------------------------------------------------------------
 cat <<EOF
 
@@ -182,6 +216,7 @@ cat <<EOF
 
   Mise à jour :
       cd $APP_DIR && git pull && bash install.sh
+      (raccourci : bbdf-up  —  actuellement : bbdf-ac / bbdf-de)
 
   Plus d'infos : docs/INSTALLATION.md
 ===========================================================================
