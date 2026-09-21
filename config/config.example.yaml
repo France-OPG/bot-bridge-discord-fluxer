@@ -14,6 +14,17 @@ bridge:
   # aucun texte visible en fin de message. Optionnel — laissez "".
   signature: ""
 
+  # Liaison AUTOMATIQUE : à chaque démarrage le pont analyse les salons
+  # texte visibles côté Discord et côté Fluxer, puis crée les paires
+  # tout seul (mêmes noms d'abord, puis par ordre des salons).
+  # Les liens manuels ci-dessous restent prioritaires ; une paire obsolète
+  # (salon disparu ou identifiant factice) est retirée automatiquement.
+  autolink: true
+
+  # Facultatif : guild Discord utilisée pour l'auto-liaison.
+  # Absent = la première guild disponible du bot est utilisée.
+  # discord_guild_id: "123456789012345678"
+
   # Préfixes d'affichage (côté cible).
   display:
     discord: "Discord"
@@ -58,7 +69,9 @@ fluxer:
   base_url: "${FLUXER_API_URL}"
   token: "${FLUXER_TOKEN}"
 
-# Association des salons texte et vocaux.
+# Association manuelle des salons texte et vocaux (OPTIONNEL quand
+# bridge.autolink est actif : le pont complète automatiquement cette
+# liste à chaque démarrage, et retire les paires au salon disparu).
 # text : relaye les messages texte entre les deux salons.
 # voice.enabled : active le pont vocal bidirectionnel entre les
 # deux salons vocaux (nécessite un serveur LiveKit configuré sur

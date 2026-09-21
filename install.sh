@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ============================================================================
 #  install.sh — Installation du pont discord-fluxer-bridge sur un conteneur
 #  LXC ou une VM Linux (Debian 12+ / Ubuntu 22.04+).
@@ -79,13 +79,14 @@ log "Répertoire d'installation : $APP_DIR"
 # ---------------------------------------------------------------------------
 # 3. Node.js 22 + pnpm
 # ---------------------------------------------------------------------------
-log "Installation des paquets de base (curl, git, toolchain)…"
+log "Installation des paquets de base (curl, git, nano, toolchain)…"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y \
   ca-certificates \
   curl \
   git \
+  nano \
   make \
   g++ \
   python3 \
@@ -165,6 +166,7 @@ if [ -d /run/systemd/system ]; then
   log "systemd détecté — installation du service $SERVICE_NAME…"
   sed "s|__APP_DIR__|$APP_DIR|g; s|__APP_USER__|$APP_USER|g" \
     "$APP_DIR/deploy/lxc/discord-fluxer-bridge.service" \
+    | tr -d '\r' \
     > "/etc/systemd/system/$SERVICE_NAME.service"
   systemctl daemon-reload
 
@@ -185,13 +187,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 7b. Commandes utilitaires (bbdf-up / bbdf-ac / bbdf-de) dans le PATH
+# 7b. Commandes utilitaires (bbdf-*) globales dans le PATH
 # ---------------------------------------------------------------------------
-chmod +x "$APP_DIR"/deploy/lxc/bbdf-up.sh "$APP_DIR"/deploy/lxc/bbdf-ac.sh "$APP_DIR"/deploy/lxc/bbdf-de.sh
-for cmd in bbdf-up bbdf-ac bbdf-de; do
-  ln -sf "$APP_DIR/deploy/lxc/$cmd.sh" "/usr/local/bin/$cmd"
+chmod +x "$APP_DIR"/deploy/lxc/bbdf-*.sh
+for cmd in bbdf-up bbdf-ac bbdf-de bbdf-ed bbdf-co; do
+  # Wrapper en fins de ligne LF : fonctionne même si le dépôt cloné
+  # contient des fichiers CRLF (Windows) — la shebang reste valide.
+  cat > "/usr/local/bin/$cmd" <<EOF
+#!/usr/bin/env bash
+# $cmd — lance le script correspondant du dépôt.
+exec bash "$APP_DIR/deploy/lxc/$cmd.sh" "\$@"
+EOF
+  chmod +x "/usr/local/bin/$cmd"
 done
-log "Commandes installées : bbdf-up (maj), bbdf-ac (activer), bbdf-de (désactiver)"
+log "Commandes installées : bbdf-up, bbdf-ac, bbdf-de, bbdf-ed, bbdf-co"
 
 # ---------------------------------------------------------------------------
 # 8. Récapitulatif
@@ -215,8 +224,13 @@ cat <<EOF
       bash $APP_DIR/deploy/lxc/run.sh               # avant-plan
 
   Mise à jour :
-      cd $APP_DIR && git pull && bash install.sh
-      (raccourci : bbdf-up  —  actuellement : bbdf-ac / bbdf-de)
+      bbdf-up
+      (ou : cd $APP_DIR && git pull && bash install.sh)
+
+  Commandes globales :
+      bbdf-up   → met à jour depuis GitHub (config conservée)
+      bbdf-ac   → active le bot   |   bbdf-de → désactive le bot
+      bbdf-ed   → édite .env      |   bbdf-co → édite config/config.yaml
 
   Plus d'infos : docs/INSTALLATION.md
 ===========================================================================

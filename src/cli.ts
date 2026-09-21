@@ -59,6 +59,7 @@ function commandValidate(args: ParsedArgs): void {
     const config = validateConfigFile(args.configPath ?? '');
     console.log('Configuration valide.');
     console.log(`  bridge.name : ${config.bridge.name}`);
+    console.log(`  liaison auto : ${config.bridge.autolink ? 'activée' : 'désactivée'}`);
     console.log(`  lien(s) texte : ${config.links.length}`);
     console.log(`  lien(s) voix : ${config.links.filter((l) => l.voice?.enabled).length}`);
     console.log(`  destination Fluxer : ${config.fluxer.base_url}`);

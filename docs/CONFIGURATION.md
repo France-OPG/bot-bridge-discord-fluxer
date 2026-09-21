@@ -30,6 +30,8 @@ Le chemin est résolu dans l'ordre :
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|
 | `name` | string | `bridge` | Nom du pont (nom des webhooks créés + logs). Type Max 80 caractères pour un username de webhook. |
+| `autolink` | bool | `true` | Liaison **automatique** des salons : le pont analyse les salons texte visibles des deux côtés au démarrage et crée les paires (par nom, puis par ordre). Les liens manuels restent prioritaires et une paire au salon disparu est retirée. |
+| `discord_guild_id` | string | *(1re guild)* | Guild Discord ciblée par l'auto-liaison (facultatif). |
 | `signature` | string | `""` | Marqueur ajouté en fin de message relayé (anti-boucle). `""` = aucun ajout visible. |
 | `display.discord` | string | `Discord` | Préfixe `[Discord]` visible côté Fluxer. |
 | `display.fluxer` | string | `Fluxer` | Préfixe `[Fluxer]` visible côté Discord. |
@@ -67,6 +69,10 @@ Le chemin est résolu dans l'ordre :
 
 Un lien associe un salon **texte** Discord et un salon **texte** Fluxer.
 Le même bloc peut activer le pont vocal (voir `docs/VOICE.md`).
+
+> **Optionnel** : avec `bridge.autolink: true` (défaut), cette section est
+> complétée automatiquement à chaque démarrage. Elle sert à imposer des
+> paires précises (ex. la voix) ou à verrouiller des choix.
 
 ```yaml
 links:

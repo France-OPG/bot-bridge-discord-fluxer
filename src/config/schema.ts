@@ -32,6 +32,10 @@ export interface LinkConfig {
 export interface BridgeConfig {
   name: string;
   signature: string;
+  /** Analyse automatique des salons texte et création des liaisons. */
+  autolink: boolean;
+  /** Guild Discord utilisée pour l'auto-liaison (défaut : première disponible). */
+  discord_guild_id?: string;
   display: { discord: string; fluxer: string };
   relay: {
     messages: boolean;
@@ -167,6 +171,11 @@ export function validateConfig(raw: Record<string, unknown>): AppConfig {
     bridge: {
       name: typeof bridge.name === 'string' ? bridge.name : 'bridge',
       signature: typeof bridge.signature === 'string' ? bridge.signature : '',
+      autolink: bridge.autolink === undefined ? true : truthy(bridge.autolink),
+      discord_guild_id:
+        typeof bridge.discord_guild_id === 'string' && bridge.discord_guild_id.trim() !== ''
+          ? bridge.discord_guild_id.trim()
+          : undefined,
       display: {
         discord: typeof (bridge.display as Record<string, unknown>)?.discord === 'string'
           ? ((bridge.display as Record<string, unknown>).discord as string)

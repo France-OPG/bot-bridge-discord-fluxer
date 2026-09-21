@@ -21,18 +21,35 @@ if [ ! -d "$APP_DIR/.git" ]; then
   exit 1
 fi
 
+# Le dépôt appartient à l'utilisateur système 'dxf' : déclarer le dossier
+# "sûr" pour root (évite l'erreur "dubious ownership").
+git config --global --add safe.directory "$APP_DIR"
+
 echo "==> Mise à jour des sources depuis GitHub…"
 # deploy/lxc/run.sh est régénéré par install.sh : on remet le fichier
 # suivi d'origine pour ne pas bloquer le pull.
 git -C "$APP_DIR" checkout -- deploy/lxc/run.sh 2>/dev/null || true
 git -C "$APP_DIR" pull
 
+# Ré-écrit les commandes globales (bbdf-up / bbdf-ac / bbdf-de /
+# bbdf-ed / bbdf-co) : elles restent disponibles même après un pull
+# brut sans install.sh.
+echo "==> Commandes globales (bbdf-up / bbdf-ac / bbdf-de / bbdf-ed / bbdf-co)…"
+for cmd in bbdf-up bbdf-ac bbdf-de bbdf-ed bbdf-co; do
+  cat > "/usr/local/bin/$cmd" <<EOF
+#!/usr/bin/env bash
+# $cmd — lance le script correspondant du dépôt.
+exec bash "$APP_DIR/deploy/lxc/$cmd.sh" "\$@"
+EOF
+  chmod +x "/usr/local/bin/$cmd"
+done
+
 echo
 echo "==> Recompilation + réinstallation (configuration conservée)…"
 bash "$APP_DIR/install.sh"
 
 echo
-echo "==> bbdf-up terminé. Redémarrage :"
-echo "      bbdf-ac    (activer le bot)"
-echo "      bbdf-de    (désactiver le bot)"
+echo "==> bbdf-up terminé. Commandes globales :"
+echo "      bbdf-ac    activer le bot          | bbdf-de  désactiver le bot"
+echo "      bbdf-ed    éditer .env (tokens)    | bbdf-co  éditer config/config.yaml"
 echo "      journalctl -u discord-fluxer-bridge -f   (logs)"

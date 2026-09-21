@@ -29,6 +29,13 @@ export interface PlatformChannel {
   type: 'text' | 'voice';
 }
 
+/** Salon texte découvert sur une plateforme (auto-liaison). */
+export interface DiscoveredChannel {
+  id: string;
+  name: string;
+  position: number;
+}
+
 export interface PlatformUserInfo {
   id: string;
   displayName: string;
@@ -53,6 +60,9 @@ export interface PlatformAdapter {
 
   /** Restreint les salons texte surveillés (perf). */
   setWatchedTextChannels(ids: Iterable<string>): void;
+
+  /** Liste les salons texte visibles du compte connecté (auto-liaison). */
+  listTextChannels?(): Promise<DiscoveredChannel[]>;
 
   /** Renvoie l'id du webhook du pont pour un salon (si la plateforme en expose). */
   webhookIdFor?(channelId: string): string | undefined;

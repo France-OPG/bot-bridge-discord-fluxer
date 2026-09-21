@@ -1,8 +1,9 @@
-import { Client, Events, User } from '@fluxerjs/core';
+import { Client, Events, type GuildChannel, User } from '@fluxerjs/core';
 import { getLogger } from '../../logging/logger.js';
 import { HttpClient } from '../../rate/httpClient.js';
 import { RateLimiter } from '../../rate/rateLimiter.js';
 import {
+  DiscoveredChannel,
   OutboundMessage,
   OutboundMessageResult,
   PlatformAdapter,
@@ -106,6 +107,28 @@ export class FluxerAdapter implements PlatformAdapter {
 
   setReactionsEnabled(enabled: boolean): void {
     this.allowReactions = enabled;
+  }
+
+  /** Liste les salons texte visibles du bot Fluxer, triés par position. */
+  async listTextChannels(): Promise<DiscoveredChannel[]> {
+    const result: DiscoveredChannel[] = [];
+    const guild = this.client.guilds.first();
+    if (!guild) return result;
+
+    let channels: GuildChannel[] = [];
+    try {
+      channels = await guild.fetchChannels();
+    } catch (err) {
+      getLogger().warn({ err: err instanceof Error ? err.message : String(err) }, 'cache de salons Fluxer utilisé');
+      channels = [...guild.channels.values()];
+    }
+
+    for (const channel of channels) {
+      if (!channel.isText() || !channel.name) continue;
+      result.push({ id: channel.id, name: channel.name, position: channel.position ?? Number.MAX_SAFE_INTEGER });
+    }
+    result.sort((a, b) => a.position - b.position);
+    return result;
   }
 
   /** Token voix LiveKit via un op 4 gateway (repli si REST indisponible). */

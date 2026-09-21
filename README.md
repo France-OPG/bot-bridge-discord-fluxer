@@ -1,75 +1,68 @@
 # discord-fluxer-bridge
 
-Passerelle bidirectionnelle **temps réel** entre **Discord** et **Fluxer**
-(messagerie et VoIP open-source, auto-hébergeable), en **Node.js + TypeScript**.
+Passerelle **bidirectionnelle temps réel** entre **Discord** et **Fluxer**
+(Node.js + TypeScript). Le pont relaie le texte, les éditions/suppressions,
+les réponses, les fichiers, les réactions et **la voix** entre deux salons qui
+ne parlent pas la même langue d'hébergement — en imitant le **nom et l'avatar**
+de l'utilisateur grâce aux webhooks.
 
-Le pont relaie le texte, les éditions/suppressions, les réponses, les pièces
-jointes, les réactions et **la voix** entre deux (ou plusieurs) couples de
-salons, en s'appuyant sur les webhooks des deux plateformes pour **imiter le
-nom et l'avatar** des utilisateurs de l'autre côté.
+- **Texte** : messages, edits, deletes, réponses citées, fichiers, réactions, avatars.
+- **Voix** : pont vocal bidirectionnel mono 48 kHz (LiveKit côté Fluxer, flux Raw côté Discord).
+- **Auto-liaison** : à chaque démarrage, le pont analyse les salons texte visibles des
+  deux côtés et crée les correspondances tout seul (mêmes noms d'abord, puis par ordre).
+- **Robuste** : anti-boucle multicouche, rate limits respectés, reconnexions automatiques,
+  logs structurés, arrêt propre, serveur de santé HTTP.
 
-- **Texte** : messages, edits, deletes, replies (citations), fichiers, réactions, avatars.
-- **Voix** : pont vocal bidirectionnel mono 48 kHz, via LiveKit côté Fluxer et le flux "Raw" côté Discord.
-- **Robustesse** : anti-boucle multicouche, rate limits respectés, reconnexions automatiques, logs structurés, arrêt propre.
-- **Opérationnel** : Docker Compose, **conteneur LXC Proxmox**, CLI, serveur de santé HTTP (`/health`, `/status`).
-
-> ⚠️ Nécessite **Node ≥ 22.13** (contrainte du SDK `@fluxerjs/core` et de
-> `@discordjs/voice`). Voir `docs/INSTALLATION.md`.
-
----
-
-## Démarrage rapide (Docker)
-
-```bash
-cp .env.example .env                    # remplissez les tokens
-cp config/config.example.yaml config/config.yaml   # renseignez vos salons
-docker compose up -d --build
-docker compose logs -f discord-fluxer-bridge
-curl http://127.0.0.1:8083/status       # état du pont
-```
-
-## Démarrage rapide (source)
-
-```bash
-pnpm install          # pnpm (npm est corrompu sur certains postes)
-pnpm dev              # ou : pnpm build && pnpm start
-```
-
-## Démarrage rapide (LXC / VM)
-
-Sur un conteneur LXC ou une VM Linux (Debian 12+, Ubuntu 22.04+), créez votre
-système, puis clonez et lancez l'installateur :
-
-```bash
-git clone https://github.com/France-OPG/bot-bridge-discord-fluxer
-cd bot-bridge-discord-fluxer
-sudo bash install.sh          # Node 22 + build + service, tout en un
-
-# Une seule fois — les secrets :
-nano .env                     # DISCORD_TOKEN, FLUXER_API_URL, FLUXER_TOKEN
-nano config/config.yaml       # identifiants de salons (texte/voix)
-
-# Validation puis démarrage :
-sudo bash deploy/lxc/validate.sh
-sudo systemctl enable --now discord-fluxer-bridge
-journalctl -u discord-fluxer-bridge -f
-```
-
-`install.sh` est **idempotent** : relancez-le après un `git pull` pour mettre à
-jour. Sans systemd : mode avant-plan `bash deploy/lxc/run.sh`. Détails et
-accès au serveur d'état dans `docs/INSTALLATION.md`.
-
-Commandes utiles :
-
-```bash
-pnpm cli validate-config        # vérifie la configuration
-pnpm cli links                  # liste les liens configurés
-pnpm cli status                 # statistiques du serveur de statut
-pnpm test                       # tests unitaires
-pnpm typecheck                  # vérification des types
-```
+Prérequis : un serveur **Linux (Debian 12+ ou Ubuntu 22.04+)** — conteneur LXC,
+VM ou serveur nu. Le bot Discord doit être invité sur votre serveur
+(Les permissions Administrateur suffisent).
 
 ---
+
+## Installation — une seule ligne
+
+```bash
+git clone https://github.com/France-OPG/bot-bridge-discord-fluxer && cd bot-bridge-discord-fluxer && sudo bash install.sh
+```
+
+Le script s'occupe de tout : copie du projet dans `/opt/discord-fluxer-bridge`,
+installation de Node.js 22 + pnpm, compilation, création de l'utilisateur
+`dxf`, installation du service systemd et des commandes `bbdf-*`.
+
+## Premiers pas
+
+```bash
+bbdf-ed        # renseignez vos tokens (Discord, Fluxer)
+bbdf-co        # (facultatif) verrouillez des paires de salons / la voix
+bbdf-ac        # active le bot
+```
+
+Les **salons sont reliés automatiquement** : rien à configurer pour lier les
+salons texte. Les correspondances manuelles restent possibles dans
+`config/config.yaml` et restent prioritaires.
+
+## Commandes (valables partout sur le système)
+
+| Commande  | Fonction                                                        |
+|-----------|-----------------------------------------------------------------|
+| `bbdf-up` | Met à jour le bot depuis GitHub (recommpile + redémarre, la configuration n'est **jamais** touchée) |
+| `bbdf-ac` | **Active** le bot (démarre + s'active au boot)                  |
+| `bbdf-de` | **Désactive** le bot (arrêt + retrait du boot)                  |
+| `bbdf-ed` | Ouvre `.env` dans un éditeur (tokens Discord / Fluxer)          |
+| `bbdf-co` | Ouvre `config/config.yaml` dans un éditeur (salons / options)   |
+
+Toutes les commandes fonctionnent **où que vous soyez** dans la ligne de
+commande, sans `.sh` à la fin.
+
+## Logs et état
+
+```bash
+journalctl -u discord-fluxer-bridge -f     # logs temps réel
+curl http://127.0.0.1:8083/status          # état + compteurs du pont
+```
+
+`install.sh` est **idempotent** : relancez-le à volonté (mise à jour, réparation,
+changement de chemin). Sans systemd (conteneur minimal) : `bash deploy/lxc/run.sh`.
 
 ## Architecture
 
@@ -77,10 +70,9 @@ pnpm typecheck                  # vérification des types
         Discord                           Fluxer
   ┌────────────────────┐           ┌─────────────────────┐
   │  DiscordAdapter     │           │  FluxerAdapter       │
-  │  discord.js + REST  │           │  @fluxerjs/core +REST│
-  │  webhookPool        │  Bridge   │  webhookPool         │
-  │  (nom+avatar via    │◄─────────►│  (nom+avatar via     │
-  │   webhooks)         │  Core     │   webhooks)          │
+  │  discord.js + REST  │  Bridge   │  @fluxerjs/core +REST│
+  │  webhookPool        │◄─────────►│  webhookPool         │
+  │  (nom+avatar)       │  Core     │  (nom+avatar)        │
   │  voice (@discordjs/ │◄─────────►│  voice (LiveKit)     │
   │   voice, 1 flux)    │ VoiceRouter│  AudioSource 48k mono│
   └────────────────────┘           └─────────────────────┘
@@ -89,20 +81,11 @@ pnpm typecheck                  # vérification des types
 
 Le cœur (`src/core/bridge.ts`) ne connaît que des **adaptateurs normalisés**
 (`PlatformAdapter`, `VoicePlatform`) : ajouter une plateforme = implémenter une
-interface. Tous les détails de la recherche et des limites des API sont dans
-`docs/ANALYSE.md`.
+interface.
 
 ## Documentation
 
-- `docs/ANALYSE.md` — analyse technique des deux plateformes et choix
-  d'architecture (dont les limites confirmées des API).
-- `docs/INSTALLATION.md` — prérequis, permissions des bots, installation locale
-  et Docker.
+- `docs/INSTALLATION.md` — prérequis, permissions des bots, installation.
 - `docs/CONFIGURATION.md` — référence complète de la configuration.
 - `docs/VOICE.md` — le pont vocal en détail et ses limites.
-- `docs/DEPANNAGE.md` — dépannage pas à pas.
-
-## Licence
-
-AGPL-3.0-only (voir `package.json` et les licences des bibliothèques utilisées,
-notamment `fluxerapp/fluxer` et `discord.js`).
+- `docs/ANALYSE.md` — analyse technique des deux plateformes et choix d'architecture.

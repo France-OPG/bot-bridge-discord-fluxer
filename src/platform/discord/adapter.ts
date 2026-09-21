@@ -1,4 +1,5 @@
 import {
+  ChannelType,
   Client,
   Events,
   GatewayIntentBits,
@@ -12,6 +13,7 @@ import { getLogger } from '../../logging/logger.js';
 import { HttpClient } from '../../rate/httpClient.js';
 import { RateLimiter } from '../../rate/rateLimiter.js';
 import {
+  DiscoveredChannel,
   OutboundMessage,
   OutboundMessageResult,
   PlatformAdapter,
@@ -38,6 +40,8 @@ export interface DiscordAdapterOptions {
   cacheDir: string;
   bucket: RateLimiter;
   http: HttpClient;
+  /** Guild Discord ciblée par l'auto-liaison (optionnel). */
+  pinnedGuildId?: string;
 }
 
 const DEFAULT_MESSAGE_TYPES = new Set([0, 19]);
@@ -95,6 +99,29 @@ export class DiscordAdapter implements PlatformAdapter {
 
   setWatchedTextChannels(ids: Iterable<string>): void {
     this.watchedTextChannels = new Set(ids);
+  }
+
+  /** Liste les salons texte (GuildText) visibles du bot, triés par position. */
+  async listTextChannels(): Promise<DiscoveredChannel[]> {
+    const channels: DiscoveredChannel[] = [];
+    let guild = this.client.guilds.cache.first();
+    if (this.opts.pinnedGuildId) {
+      guild = this.client.guilds.cache.get(this.opts.pinnedGuildId);
+    }
+    if (!guild) return channels;
+
+    try {
+      await guild.channels.fetch();
+    } catch (err) {
+      getLogger().warn({ err: err instanceof Error ? err.message : String(err) }, 'cache de salons Discord utilisé');
+    }
+
+    for (const channel of guild.channels.cache.values()) {
+      if (channel.type !== ChannelType.GuildText) continue;
+      channels.push({ id: channel.id, name: channel.name, position: channel.rawPosition ?? 0 });
+    }
+    channels.sort((a, b) => a.position - b.position);
+    return channels;
   }
 
   setReactionsEnabled(enabled: boolean): void {
