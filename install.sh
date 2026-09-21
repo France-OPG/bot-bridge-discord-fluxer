@@ -40,6 +40,8 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+log() { echo "==> $*"; }
+
 # ---------------------------------------------------------------------------
 # Copie du dépôt vers APP_DIR (uniquement s'il n'y est pas déjà).
 # ---------------------------------------------------------------------------
@@ -63,8 +65,6 @@ if [ ! -f "$APP_DIR/package.json" ]; then
   echo "ERREUR : introuvable 'package.json' dans $APP_DIR (échec de copie ?)." >&2
   exit 1
 fi
-
-log() { echo "==> $*"; }
 
 # ---------------------------------------------------------------------------
 # 2. Environnement
