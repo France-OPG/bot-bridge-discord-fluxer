@@ -322,6 +322,7 @@ export class FluxerAdapter implements PlatformAdapter {
       attachments: message.attachments,
     });
     if (webhookResult) {
+      getLogger().debug({ channelId, id: webhookResult.id }, 'post Fluxer : webhook');
       return {
         id: webhookResult.id,
         channelId,
@@ -355,6 +356,7 @@ export class FluxerAdapter implements PlatformAdapter {
     }
     const sent = await this.rest.sendMessage(channelId, { content, fileBuffers });
     if (!sent) throw new Error(`Envoi du message dans le salon Fluxer ${channelId} échoué`);
+    getLogger().debug({ channelId, id: sent.id }, 'post Fluxer : bot');
     return {
       id: sent.id,
       channelId,

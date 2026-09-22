@@ -317,6 +317,7 @@ export class DiscordAdapter implements PlatformAdapter {
       reference: message.reference ? { messageId: message.reference.messageId } : undefined,
     });
     if (webhookResult) {
+      getLogger().debug({ channelId, id: webhookResult.id }, 'post Discord : webhook');
       return {
         id: webhookResult.id,
         channelId,
@@ -344,6 +345,7 @@ export class DiscordAdapter implements PlatformAdapter {
       content = `**${message.author.displayName}**${content ? `\n${content}` : ''}`;
     }
     const sent = (await channel.send({ content, files })) as Message;
+    getLogger().debug({ channelId, id: sent.id }, 'post Discord : bot');
     return {
       id: sent.id,
       channelId,

@@ -219,7 +219,15 @@ export class BridgeService {
   private async handleMessage(msg: BridgeMessage): Promise<void> {
     const log = getLogger();
     const link = this.linkFor(msg.platform, msg.channelId);
-    if (!link || !link.text) return;
+    if (!link || !link.text) {
+      if (!link) {
+        log.debug(
+          { platform: msg.platform, channel: msg.channelId, len: msg.content.length },
+          'message hors lien — ignoré',
+        );
+      }
+      return;
+    }
 
     if (msg.isSystem && !this.relay.system_messages) return;
 
@@ -266,6 +274,11 @@ export class BridgeService {
       }
       this.deps.metrics.inc('messagesBridged');
       if (attachments.length > 0) this.deps.metrics.inc('attachmentsBridged', attachments.length);
+
+      log.info(
+        { from: msg.platform, author: msg.author.displayName, to: target.name, targetChannelId, relayedAt: result.id },
+        'message relayé',
+      );
 
       if (replyContext) {
         log.info({
