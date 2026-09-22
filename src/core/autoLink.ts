@@ -94,5 +94,16 @@ export function buildAutoLinks(params: {
     added.push({ name: d.name, discord_channel_id: d.id, fluxer_channel_id: f.id, text: true });
   }
 
-  return { links: [...kept, ...added], drops, added: added.length };
+  // Déduplique les paires identiques (config doublonnée, relances…) : un
+  // message ne doit jamais être relayé deux fois vers le même salon.
+  const seenPairs = new Set<string>();
+  const unique: LinkConfig[] = [];
+  for (const link of [...kept, ...added]) {
+    const key = `${link.discord_channel_id}|${link.fluxer_channel_id}`;
+    if (seenPairs.has(key)) continue;
+    seenPairs.add(key);
+    unique.push(link);
+  }
+
+  return { links: unique, drops, added: added.length };
 }

@@ -12,6 +12,7 @@ import { buildAutoLinks } from './core/autoLink.js';
 import { DiscordAdapter } from './platform/discord/adapter.js';
 import { FluxerAdapter } from './platform/fluxer/adapter.js';
 import { startStatusServer, stopStatusServer } from './admin/statusServer.js';
+import { DiscoveredChannel } from './platform/types.js';
 import * as path from 'node:path';
 
 const VERSION = '0.1.0';
@@ -81,18 +82,40 @@ export async function runBridge(options: { configPath?: string } = {}): Promise<
   let links: LinkConfig[] = config.links;
   if (config.bridge.autolink) {
     log.info('Analyse des salons — création automatique des liaisons…');
-    try {
-      const [discordChannels, fluxerChannels] = await Promise.all([
+    let discordChannels: DiscoveredChannel[] = [];
+    let fluxerChannels: DiscoveredChannel[] = [];
+    const discover = async (): Promise<boolean> => {
+      const [d, f] = await Promise.all([
         discord.listTextChannels?.() ?? Promise.resolve([]),
         fluxer.listTextChannels?.() ?? Promise.resolve([]),
       ]);
-      if (discordChannels.length === 0 || fluxerChannels.length === 0) {
+      discordChannels = d;
+      fluxerChannels = f;
+      return d.length > 0 && f.length > 0;
+    };
+    try {
+      let ready = await discover();
+      if (!ready) {
+        // L'une des plateformes n'est pas encore prête (guilds pas peuplés
+        // au démarrage) : on réessaie une fois après un court délai.
+        log.info(
+          { discord: discordChannels.length, fluxer: fluxerChannels.length },
+          'découverte incomplète au premier essai — nouvelle tentative dans 1,5 s',
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        ready = await discover();
+      }
+      if (!ready) {
         log.warn(
           { discord: discordChannels.length, fluxer: fluxerChannels.length },
           'découverte des salons incomplète — liens manuels conservés',
         );
       } else {
-        const outcome = buildAutoLinks({ existing: config.links, discord: discordChannels, fluxer: fluxerChannels });
+        const outcome = buildAutoLinks({
+          existing: config.links,
+          discord: discordChannels,
+          fluxer: fluxerChannels,
+        });
         links = outcome.links;
         for (const drop of outcome.drops) {
           log.warn({ source: drop.source, id: drop.id, name: drop.name }, 'lien manuel obsolète abandonné');

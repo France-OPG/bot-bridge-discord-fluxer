@@ -68,4 +68,19 @@ describe('buildAutoLinks', () => {
     expect(outcome.links[0]).toMatchObject({ discord_channel_id: 'd2', fluxer_channel_id: 'f1' });
     expect(outcome.links[1]).toMatchObject({ discord_channel_id: 'd1', fluxer_channel_id: 'f2' });
   });
+
+  it('déduplique les paires identiques (config doublonnée)', () => {
+    const discord = [ch('d1', 'general', 0)];
+    const fluxer = [ch('f1', 'general', 0)];
+    const dup: LinkConfig = {
+      name: 'duplicata',
+      discord_channel_id: 'd1',
+      fluxer_channel_id: 'f1',
+      text: true,
+    };
+    const outcome = buildAutoLinks({ existing: [dup, dup], discord, fluxer });
+
+    expect(outcome.links).toHaveLength(1);
+    expect(outcome.links[0].discord_channel_id).toBe('d1');
+  });
 });

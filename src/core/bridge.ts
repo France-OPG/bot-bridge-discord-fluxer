@@ -279,10 +279,15 @@ export class BridgeService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.deps.metrics.addError(`${msg.platform}→${target.name}: ${message}`);
+      log.error(
+        { from: msg.platform, channel: msg.channelId, to: target.name, targetChannelId, err: message },
+        'échec du relais de message',
+      );
     }
   }
 
   private async handleEdit(platform: PlatformName, edit: BridgeEdit): Promise<void> {
+    const log = getLogger();
     if (!this.relay.edits) return;
     const link = this.linkFor(platform, edit.channelId);
     if (!link) return;
@@ -307,10 +312,12 @@ export class BridgeService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.deps.metrics.addError(`edit ${platform}→${target.name}: ${message}`);
+      log.error({ platform, to: target.name, err: message }, 'échec de relais d’édition');
     }
   }
 
   private async handleDelete(platform: PlatformName, del: { messageId: string; channelId: string }): Promise<void> {
+    const log = getLogger();
     if (!this.relay.deletes) return;
     const link = this.linkFor(platform, del.channelId);
     if (!link) return;
@@ -325,12 +332,14 @@ export class BridgeService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.deps.metrics.addError(`delete ${platform}→${target.name}: ${message}`);
+      log.error({ platform, to: target.name, err: message }, 'échec de relais de suppression');
     }
     this.deps.store.remove(platform, del.messageId);
     this.deps.store.remove(target.name, seen.relayedId);
   }
 
   private async handleReaction(platform: PlatformName, reaction: BridgeReaction): Promise<void> {
+    const log = getLogger();
     if (!this.relay.reactions) return;
     const link = this.linkFor(platform, reaction.channelId);
     if (!link) return;
@@ -348,6 +357,7 @@ export class BridgeService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.deps.metrics.addError(`reaction ${platform}→${target.name}: ${message}`);
+      log.error({ platform, to: target.name, err: message }, 'échec de relais de réaction');
     }
   }
 getStatus(): BridgeStatus {

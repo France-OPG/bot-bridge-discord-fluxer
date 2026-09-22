@@ -308,8 +308,15 @@ export class FluxerAdapter implements PlatformAdapter {
   }
 
   async sendMessage(channelId: string, message: OutboundMessage): Promise<OutboundMessageResult> {
+    // Fluxer ignore le username des webhooks : on met le nom DANS le contenu
+    // pour que l'auteur soit visible côté Fluxer (le username reste envoyé
+    // en secours là où l'impersonation est supportée).
+    const authorPrefix = message.author?.displayName
+      ? `**${message.author.displayName}**${message.content ? '\n' : ''}`
+      : '';
+    const content = `${authorPrefix}${message.content}`;
     const webhookResult = await this.webhooks.execute(channelId, {
-      content: message.content,
+      content,
       username: message.author?.displayName,
       avatarUrl: message.author?.avatarUrl,
       attachments: message.attachments,
